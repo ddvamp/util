@@ -8,20 +8,21 @@ project(
   LANGUAGES CXX
 )
 
-set(name ${PROJECT_NAME})
-set(dir ${PROJECT_SOURCE_DIR})
-
-file(GLOB_RECURSE sources ${dir}/src/*.cpp)
-if(NOT sources)
-  message(FATAL_ERROR "Incorrect GLOB search pattern for sources!")
-endif()
-
-add_library(${name} STATIC)
-target_sources(${name} PRIVATE ${sources})
-
-target_include_directories(
-  ${name} PUBLIC ${dir}/include
-  ${name} PRIVATE ${dir}/src
+set(
+  util_sources
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/abort.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/assert.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/assume.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/page_allocation.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/unreachable.cpp
 )
 
-target_compile_features(${name} PUBLIC cxx_std_23)
+add_library(util STATIC)
+target_sources(util PRIVATE ${util_sources})
+
+target_include_directories(
+  util PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
+  util PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+
+target_compile_features(util PUBLIC cxx_std_23)
