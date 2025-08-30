@@ -1,13 +1,18 @@
+//
+// page_allocation.cpp
+// ~~~~~~~~~~~~~~~~~~~
+//
 // Copyright (C) 2023-2025 Artyom Kolpakov <ddvamp007@gmail.com>
 //
 // Licensed under GNU GPL-3.0-or-later.
 // See file LICENSE or <https://www.gnu.org/licenses/> for details.
+//
 
 #include <util/debug/assert.hpp>
-#include "util/memory/page_allocation.hpp"
+#include <util/memory/page_allocation.hpp>
 
 #if __has_include(<unistd.h>)
-#	include "internal/os/posix/page_allocation.hpp"
+#	include <internal/os/posix/page_allocation.hpp>
 #else
 #	error "Not POSIX-compliant environment"
 #endif

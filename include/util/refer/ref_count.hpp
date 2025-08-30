@@ -1,16 +1,21 @@
+//
+// ref_count.hpp
+// ~~~~~~~~~~~~~
+//
 // Copyright (C) 2023-2025 Artyom Kolpakov <ddvamp007@gmail.com>
 //
 // Licensed under GNU GPL-3.0-or-later.
 // See file LICENSE or <https://www.gnu.org/licenses/> for details.
+//
 
 #ifndef DDVAMP_UTIL_REFER_REF_COUNT_HPP_INCLUDED_
 #define DDVAMP_UTIL_REFER_REF_COUNT_HPP_INCLUDED_ 1
 
-#include "ref.hpp"
-#include "util/macro.hpp"
-#include "util/debug/assert.hpp"
+#include <util/macro.hpp>
+#include <util/debug/assert.hpp>
 
 #include <atomic>
+#include <concepts>
 #include <cstddef>
 
 namespace util {
@@ -24,10 +29,9 @@ class ref_count {
   static_assert(::std::atomic<::std::size_t>::is_always_lock_free);
 
  public:
-  constexpr explicit ref_count(::std::size_t init = 1) noexcept : cnt_(init) {
-    UTIL_REF_VALIDATE_TYPE(Derived);
-  }
+  constexpr explicit ref_count(::std::size_t init = 1) noexcept : cnt_(init) {}
 
+  // It may return an stale value
   [[nodiscard]] ::std::size_t use_count() const noexcept {
     return cnt_.load(::std::memory_order_relaxed);
   }
@@ -36,16 +40,17 @@ class ref_count {
     UTIL_IGNORE(cnt_.fetch_add(1, ::std::memory_order_relaxed));
   }
 
-  void dec_ref() const noexcept {
-    UTIL_REF_VALIDATE_TYPE(Derived);
-
+  void dec_ref() const noexcept
+      requires (::std::derived_from<Derived, ref_count> &&
+                requires (Derived const &d) {
+                  { d.destroy_self() } noexcept -> ::std::same_as<void>;
+                }) {
     auto const before = cnt_.fetch_sub(1, ::std::memory_order_acq_rel);
     if (before > 1) {
       return;
     }
 
-    UTIL_ASSERT(before != 0, "Accessing an ref_counted object "
-                              "with zero ref count");
+    UTIL_ASSERT(before != 0, "An attempt to lower a ref_count below zero");
     static_cast<Derived const *>(this)->destroy_self();
   }
 };

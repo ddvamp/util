@@ -1,10 +1,17 @@
+//
+// ref.hpp
+// ~~~~~~~
+//
 // Copyright (C) 2023-2025 Artyom Kolpakov <ddvamp007@gmail.com>
 //
 // Licensed under GNU GPL-3.0-or-later.
 // See file LICENSE or <https://www.gnu.org/licenses/> for details.
+//
 
 #ifndef DDVAMP_UTIL_REFER_REF_HPP_INCLUDED_
 #define DDVAMP_UTIL_REFER_REF_HPP_INCLUDED_ 1
+
+#include <util/debug/assert.hpp>
 
 #include <concepts>
 #include <cstddef>
@@ -14,33 +21,8 @@
 
 namespace util {
 
-template <typename Derived>
-class ref_count;
-
-
 template <typename T>
-inline constexpr bool is_ref_counted_v =
-    ::std::derived_from<T, ref_count<::std::remove_const_t<T>>> &&
-    requires (T const &t) { { t.destroy_self() } noexcept; };
-
-template <typename T>
-struct is_ref_counted : ::std::bool_constant<is_ref_counted_v<T>> {};
-
-template <typename T>
-concept ref_counted = is_ref_counted_v<T>;
-
-
-#ifdef UTIL_REF_VALIDATE_TYPE
-# error "UTIL_REF_VALIDATE_TYPE macro is already defined somewhere else"
-#else
-# define UTIL_REF_VALIDATE_TYPE(T)                                         \
-      static_assert(ref_counted<T>,                                        \
-                    "Class " #T " does not inherit ref_count<" #T "> or "  \
-                    "has not defined the function destroy_self()")
-#endif
-
-
-template <typename T>
+requires ::std::is_class_v<T>
 class [[nodiscard]] ref {
  private:
   T *ptr_ = nullptr;
@@ -54,9 +36,7 @@ class [[nodiscard]] ref {
     inc_ref();
   }
 
-  ref(ref &&that) noexcept : ptr_(that.ptr_) {
-    that.ptr_ = nullptr;
-  }
+  ref(ref &&that) noexcept : ref(that.release()) {}
 
   ref &operator= (ref that) noexcept {
     swap(that);
@@ -64,14 +44,19 @@ class [[nodiscard]] ref {
   }
 
  public:
-  constexpr ref() = default;
+  constexpr ref() noexcept = default;
 
   constexpr ref(::std::nullptr_t) noexcept {}
 
+  // Constructs a ref without increasing the counter
   constexpr explicit ref(T *ptr) noexcept : ptr_(ptr) {}
 
-  [[nodiscard]] ::std::size_t use_count() const noexcept {
-    return ptr_ ? get_checked()->use_count() : 0;
+  [[nodiscard]] ::std::size_t use_count() const noexcept
+      requires (requires {
+                  { ptr_->use_count() } noexcept ->
+                      ::std::same_as<::std::size_t>;
+                }) {
+    return ptr_ ? ptr_->use_count() : 0uz;
   }
 
   void swap(ref &that) noexcept {
@@ -82,7 +67,9 @@ class [[nodiscard]] ref {
     ref().swap(*this);
   }
 
+  // Replaces a ref without increasing the counter
   void reset(T *ptr) noexcept {
+    UTIL_ASSERT(ptr_ != ptr, "Self reseting"); // [TODO]: Better message
     ref(ptr).swap(*this);
   }
 
@@ -91,11 +78,16 @@ class [[nodiscard]] ref {
   }
 
   [[nodiscard]] T &operator* () const noexcept {
+    UTIL_ASSERT(ptr_, "nullptr dereference"); // [TODO]: Better message
     return *ptr_;
   }
 
   [[nodiscard]] T *operator-> () const noexcept {
-    return get_checked();
+    return ptr_;
+  }
+
+  [[nodiscard]] T *release() noexcept {
+    return ::std::exchange(ptr_, nullptr);
   }
 
   explicit operator bool() const noexcept {
@@ -103,20 +95,21 @@ class [[nodiscard]] ref {
   }
 
  private:
-  [[nodiscard]] T *get_checked() const noexcept {
-    UTIL_REF_VALIDATE_TYPE(T);
-    return ptr_;
-  }
-
-  void inc_ref() const noexcept {
+  void inc_ref() const noexcept
+      requires (requires {
+                  { ptr_->inc_ref() } noexcept -> ::std::same_as<void>;
+                }) {
     if (ptr_) {
-      get_checked()->inc_ref();
+      ptr_->inc_ref();
     }
   }
 
-  void dec_ref() const noexcept {
+  void dec_ref() const noexcept
+      requires (requires {
+                  { ptr_->dec_ref() } noexcept -> ::std::same_as<void>;
+                }) {
     if (ptr_) {
-      get_checked()->dec_ref();
+      ptr_->dec_ref();
     }
   }
 };

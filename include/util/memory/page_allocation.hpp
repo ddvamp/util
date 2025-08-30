@@ -1,12 +1,17 @@
+//
+// page_allocation.hpp
+// ~~~~~~~~~~~~~~~~~~~
+//
 // Copyright (C) 2023-2025 Artyom Kolpakov <ddvamp007@gmail.com>
 //
 // Licensed under GNU GPL-3.0-or-later.
 // See file LICENSE or <https://www.gnu.org/licenses/> for details.
+//
 
 #ifndef DDVAMP_UTIL_MEMORY_PAGE_ALLOCATION_HPP_INCLUDED_
 #define DDVAMP_UTIL_MEMORY_PAGE_ALLOCATION_HPP_INCLUDED_ 1
 
-#include "view.hpp"
+#include <util/memory/view.hpp>
 
 #include <cstddef>
 
@@ -69,6 +74,7 @@ class [[nodiscard]] page_allocation {
   void protect_pages(::std::size_t const page_offset,
                      ::std::size_t const page_count);
 
+  // view must be obtained from a previous release call
   static page_allocation acquire(memory_view view) noexcept;
 
   [[nodiscard]] memory_view release() && noexcept {

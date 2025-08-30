@@ -1,7 +1,12 @@
+//
+// type_traits.hpp
+// ~~~~~~~~~~~~~~~
+//
 // Copyright (C) 2023-2025 Artyom Kolpakov <ddvamp007@gmail.com>
 //
 // Licensed under GNU GPL-3.0-or-later.
 // See file LICENSE or <https://www.gnu.org/licenses/> for details.
+//
 
 #ifndef DDVAMP_UTIL_TYPE_TRAITS_HPP_INCLUDED_
 #define DDVAMP_UTIL_TYPE_TRAITS_HPP_INCLUDED_ 1
@@ -10,6 +15,23 @@
 #include <utility>
 
 namespace util {
+
+// Checks whether the type is cv-qualified
+template <typename>
+inline constexpr bool is_qualified_v = false;
+
+template <typename T>
+inline constexpr bool is_qualified_v<T const> = true;
+
+template <typename T>
+inline constexpr bool is_qualified_v<T volatile> = true;
+
+template <typename T>
+inline constexpr bool is_qualified_v<T const volatile> = true;
+
+template <typename T>
+struct is_qualified : ::std::bool_constant<is_qualified_v<T>> {};
+
 
 template <typename>
 struct type {};
